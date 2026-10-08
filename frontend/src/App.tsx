@@ -4,6 +4,7 @@ import { RunList } from './components/RunList'
 import { ErrorsPanel, ReportsPanel, RunOverview } from './components/SidePanels'
 import { AgentGraph } from './graph/AgentGraph'
 import { MetricsBar } from './metrics/MetricsBar'
+import { SimpleView } from './simple/SimpleView'
 import { Timeline } from './timeline/Timeline'
 import { useObservatory } from './useObservatory'
 
@@ -24,7 +25,10 @@ export default function App() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('run')
   const [seenReports, setSeenReports] = useState(0)
+  const [simple, setSimple] = useState(() => localStorage.getItem('obs-view') !== 'detailed')
   const { run, events } = obs
+
+  useEffect(() => localStorage.setItem('obs-view', simple ? 'simple' : 'detailed'), [simple])
 
   useEffect(() => setSelectedAgent(null), [obs.selectedRunId])
   useEffect(() => { if (tab === 'reports') setSeenReports(obs.reports.length) }, [tab, obs.reports.length])
@@ -35,17 +39,33 @@ export default function App() {
   const unread = Math.max(0, obs.reports.length - seenReports)
   const errorCount = run?.metrics.errors ?? 0
 
+  const header = (
+    <header>
+      <div className="brand">◎ Agent Observatory</div>
+      <span className={`conn ${obs.connected ? 'on' : 'off'}`}>{obs.connected ? '已连接' : '正在重新连接…'}</span>
+      {!simple && run && <span className="muted crumbs">{run.title ?? run.run_id}</span>}
+      <label className="right follow">
+        <input type="checkbox" checked={obs.follow} onChange={(e) => obs.setFollow(e.target.checked)} /> 自动切换到正在进行的任务
+      </label>
+      <button className="view-toggle" onClick={() => setSimple(!simple)}>{simple ? '详细视图' : '简洁视图'}</button>
+    </header>
+  )
+  const runList = <RunList runs={obs.runs} selected={obs.selectedRunId} now={now} onSelect={obs.selectRun} onDelete={obs.deleteRun} />
+
+  if (simple) {
+    return (
+      <div className="app simple-app">
+        {header}
+        {runList}
+        <SimpleView run={run} events={events} now={now} />
+      </div>
+    )
+  }
+
   return (
     <div className="app">
-      <header>
-        <div className="brand">◎ Agent Observatory</div>
-        <span className={`conn ${obs.connected ? 'on' : 'off'}`}>{obs.connected ? 'live' : 'reconnecting…'}</span>
-        {run && <span className="muted crumbs">{run.title ?? run.run_id}</span>}
-        <label className="right follow">
-          <input type="checkbox" checked={obs.follow} onChange={(e) => obs.setFollow(e.target.checked)} /> follow live runs
-        </label>
-      </header>
-      <RunList runs={obs.runs} selected={obs.selectedRunId} now={now} onSelect={obs.selectRun} onDelete={obs.deleteRun} />
+      {header}
+      {runList}
       <main>
         <MetricsBar m={run?.metrics ?? null} />
         <AgentGraph agents={agents} events={events} selectedAgent={selectedAgent} onSelect={setSelectedAgent} now={now} />

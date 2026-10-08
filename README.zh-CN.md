@@ -27,18 +27,26 @@ Agent Observatory 通过 AI 编程工具自带的 hooks 采集数据，不需要
 > 面板上的所有数据都来自真实事件，没有模拟或随机数据。工具不提供 token 用量时显示 **N/A**，不做估算。
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Agent Observatory 面板：agent 关系图、时间线与运行概览" width="100%">
+  <img src="docs/screenshot.png" alt="简洁视图：现在在做什么、下一步、已经完成、谁在参与" width="100%">
 </p>
 
 <details>
-<summary>更多：11 个 agent 并行运行</summary>
+<summary>更多：出错时的样子 · 给开发者的详细视图</summary>
 
-![并行 agent](docs/screenshot-parallel.png)
+**出错了：用大白话说明哪里出了问题**
+
+![简洁视图中的错误](docs/screenshot-errors.png)
+
+**详细视图**：agent 关系图、原始时间线与指标
+
+![详细视图](docs/screenshot-detailed.png)
 </details>
 
 ## ✨ 功能特性
 
 - **零侵入接入**：一条安装命令即可接入 Cursor、Claude Code 和 Codex 的 hooks。hook 脚本只用标准库，服务没开也不会阻塞或影响你的 agent。
+- **人人能看懂的简洁视图（默认）**：用大白话告诉你现在在做什么、下一步是什么、已经完成了什么、哪里出错了、谁在参与，不出现专业术语。
+- **给开发者的详细视图**：右上角一键切换。
 - **Agent 关系图**：用 React Flow + dagre 自动布局，展示 agent、子 agent 的派生关系、消息流和工具节点，活跃的连线会实时高亮。
 - **识别子 agent**：子会话会自动合并进父 run，子 agent 内部的工具调用归到它自己名下。
 - **时间线**：列出全部事件，可以按事件类型、agent 过滤，或只看错误；每条事件可以展开查看原始数据。

@@ -27,18 +27,26 @@ Agent Observatory hooks into the native hook systems of AI coding agents, so you
 > Everything shown comes from real events. Nothing is mocked or sampled. If a tool doesn't report token usage, the dashboard shows **N/A** instead of a guess.
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Agent Observatory dashboard: agent graph, timeline and run overview" width="100%">
+  <img src="docs/screenshot.png" alt="Simple view: what is happening now, what's next, what's done, who is involved" width="100%">
 </p>
 
 <details>
-<summary>More: 11 agents running in parallel</summary>
+<summary>More: how errors look · detailed view for developers</summary>
 
-![Parallel agents](docs/screenshot-parallel.png)
+**Errors, in plain words**
+
+![Errors in the simple view](docs/screenshot-errors.png)
+
+**Detailed view**: agent graph, raw timeline and metrics
+
+![Detailed view](docs/screenshot-detailed.png)
 </details>
 
 ## ✨ Features
 
 - **Zero-intrusion integrations**: one installer wires up Cursor, Claude Code and Codex hooks. The hook script uses only the standard library and never blocks or breaks your agent, even if the server is down.
+- **Simple view for everyone (default)**: shows what's happening now, what comes next, what's already done, what went wrong and who is involved, in plain language with no jargon. The UI text is currently Chinese.
+- **Detailed view for developers**: one click away, top right.
 - **Agent graph**: React Flow and dagre lay out agents, subagent spawns, message flow and tool nodes, and highlight active edges live.
 - **Subagent awareness**: child conversations fold into the parent run, and each subagent's tool calls are attributed to that subagent.
 - **Timeline**: every event, with filters by type, agent and errors only, and expandable raw payloads.
