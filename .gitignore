@@ -4,3 +4,5 @@ data/
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
+
+history-film/
