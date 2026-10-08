@@ -60,7 +60,7 @@ export function Stage({ agents, events, calls, now }: Props) {
           <radialGradient id="spark"><stop offset="0%" stopColor="#fff" /><stop offset="100%" stopColor="#fff" stopOpacity="0" /></radialGradient>
         </defs>
         {agents.map((a) => {
-          const from = a.parent ? pos.get(a.parent) : undefined
+          const from = a.kind === 'main' ? undefined : pos.get(a.parent ?? '') ?? pos.get(agents.find((x) => x.kind === 'main')?.id ?? '')
           const to = pos.get(a.id)
           if (!from || !to) return null
           const d = curve(from, to)

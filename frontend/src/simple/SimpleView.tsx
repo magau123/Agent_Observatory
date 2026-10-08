@@ -55,7 +55,7 @@ export function SimpleView({ run, events, now }: Props) {
   const end = ov.turnEnd ?? (live ? now : run.updated_at)
   const turnAgents = run.agents.filter((a) => a.kind === 'main' || (a.started_at ?? a.last_active) >= ov.turnStart || a.status !== 'completed')
   const agents = turnAgents.length ? turnAgents : run.agents
-  const turnCalls = calls.filter((c) => c.startedAt >= ov.turnStart)
+  const turnCalls = calls.filter((c) => c.startedAt >= ov.turnStart || c.status === 'running')
   const turnThoughts = thoughts.filter((c) => c.startedAt >= ov.turnStart)
   const feed = steps.filter((s) => s.ts >= ov.turnStart).reverse()
   const shownFeed = showAll ? feed : feed.slice(0, FEED_SHOWN)
