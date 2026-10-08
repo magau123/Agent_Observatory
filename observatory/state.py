@@ -301,7 +301,10 @@ class RuntimeState:
             tid = ev.task_id or f"{agent.id}:{ev.event_id[:8]}"
             ev.task_id = tid
             task = run.tasks.get(tid) or Task(id=tid, agent=agent.id, created_at=ts)
-            task.description = _text(d.get("description")) or task.description or agent.current_task or ""
+            # Cursor: subagent id == id of the spawning Task call, whose short `description` beats the long prompt.
+            spawn = run.open_calls.get(agent.id) if agent.kind == "subagent" else None
+            title = _text(spawn["input"].get("description")) if spawn and isinstance(spawn.get("input"), dict) else None
+            task.description = title or _text(d.get("description")) or task.description or agent.current_task or ""
             run.tasks[tid] = task
             if agent.id == MAIN and not run.title and task.description:
                 run.title = task.description[:120]

@@ -22,26 +22,60 @@ export function agentLabel(a: Pick<Agent, 'kind' | 'name'> | undefined): string 
   return HELPER_NAMES[a.name] ?? a.name
 }
 
-interface Verb { now: string; past: string; colon: boolean }
+export type Category = 'think' | 'read' | 'edit' | 'command' | 'search' | 'web' | 'delegate' | 'analyze' | 'other'
+
+export const CATEGORY: Record<Category, { icon: string; label: string; color: string }> = {
+  think: { icon: '💭', label: '思考', color: '#a78bfa' },
+  read: { icon: '📖', label: '阅读', color: '#60a5fa' },
+  edit: { icon: '✏️', label: '修改', color: '#34d399' },
+  command: { icon: '⌨️', label: '运行命令', color: '#fbbf24' },
+  search: { icon: '🔎', label: '查找', color: '#22d3ee' },
+  web: { icon: '🌐', label: '查资料', color: '#818cf8' },
+  delegate: { icon: '🤝', label: '安排助手', color: '#f472b6' },
+  analyze: { icon: '📊', label: '分析', color: '#2dd4bf' },
+  other: { icon: '🧩', label: '其他工具', color: '#94a3b8' },
+}
+
+interface Verb { now: string; past: string; colon: boolean; cat: Category }
 
 // Order matters: the first matching pattern wins.
 const VERBS: [RegExp, Verb][] = [
-  [/web|fetch|browser|http|url/i, { now: '正在查资料', past: '查了资料', colon: true }],
-  [/^(task|subagent|spawn)/i, { now: '正在安排助手', past: '安排了助手', colon: true }],
-  [/^mcp/i, { now: '正在使用外部服务', past: '使用了外部服务', colon: true }],
-  [/todo/i, { now: '正在更新待办清单', past: '更新了待办清单', colon: false }],
-  [/read|view|cat|open/i, { now: '正在阅读', past: '阅读了', colon: false }],
-  [/write|edit|replace|patch|delete|create|notebook/i, { now: '正在修改', past: '修改了', colon: false }],
-  [/shell|bash|powershell|terminal|exec|command/i, { now: '正在运行命令', past: '运行了命令', colon: true }],
-  [/grep|glob|search|find|list|ls$/i, { now: '正在查找', past: '查找了', colon: false }],
-  [/count|metric|analy|summar|stat/i, { now: '正在分析', past: '分析了', colon: false }],
+  [/web|fetch|browser|http|url/i, { now: '正在查资料', past: '查了资料', colon: true, cat: 'web' }],
+  [/^(task|subagent|spawn)/i, { now: '正在安排助手', past: '安排了助手', colon: true, cat: 'delegate' }],
+  [/^mcp/i, { now: '正在使用外部服务', past: '使用了外部服务', colon: true, cat: 'other' }],
+  [/todo/i, { now: '正在更新待办清单', past: '更新了待办清单', colon: false, cat: 'other' }],
+  [/read|view|cat|open/i, { now: '正在阅读', past: '阅读了', colon: false, cat: 'read' }],
+  [/write|edit|replace|patch|delete|create|notebook/i, { now: '正在修改', past: '修改了', colon: false, cat: 'edit' }],
+  [/shell|bash|powershell|terminal|exec|command/i, { now: '正在运行命令', past: '运行了命令', colon: true, cat: 'command' }],
+  [/grep|glob|search|find|list|ls$/i, { now: '正在查找', past: '查找了', colon: false, cat: 'search' }],
+  [/count|metric|analy|summar|stat/i, { now: '正在分析', past: '分析了', colon: false, cat: 'analyze' }],
 ]
 
 function verbFor(tool: string): Verb {
-  return VERBS.find(([re]) => re.test(tool))?.[1] ?? { now: `正在使用「${tool}」`, past: `使用了「${tool}」`, colon: true }
+  return VERBS.find(([re]) => re.test(tool))?.[1] ?? { now: `正在使用「${tool}」`, past: `使用了「${tool}」`, colon: true, cat: 'other' }
 }
 
-export const isSpawnTool = (tool: string) => verbFor(tool).now === '正在安排助手'
+export const toolCategory = (tool: string): Category => verbFor(tool).cat
+export const isSpawnTool = (tool: string) => verbFor(tool).cat === 'delegate'
+
+const ROLE_ICONS: [RegExp, string][] = [
+  [/explor|research|investig/i, '🔭'], [/plan|architect|lead|orchestr/i, '🧭'], [/review|critic|audit|bugbot/i, '🧐'],
+  [/secur/i, '🛡️'], [/test|qa/i, '🧪'], [/writ|doc|author/i, '✍️'], [/code|dev|engineer|implement/i, '💻'],
+  [/shell|command|terminal/i, '⌨️'], [/browser|web|fetch|crawl/i, '🌐'], [/data|analy/i, '📊'], [/design|ui/i, '🎨'],
+]
+
+export function agentIcon(a: Pick<Agent, 'kind' | 'name'>): string {
+  if (a.kind === 'main') return '🧠'
+  return ROLE_ICONS.find(([re]) => re.test(a.name))?.[1] ?? '🤖'
+}
+
+/** Stable per-agent hue so the same helper keeps its colour across the stage, lanes and feed. */
+export function agentColor(id: string): string {
+  if (id === 'main') return 'hsl(222 90% 66%)'
+  let h = 0
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 360
+  return `hsl(${h} 75% 64%)`
+}
 
 const basename = (p: string) => p.split(/[\\/]/).filter(Boolean).pop() ?? p
 
@@ -86,6 +120,7 @@ export function currentActivity(a: Agent, events: AgentEvent[]): string {
 
 export interface Step {
   ts: number
+  agent: string
   who: string
   text: string
   state: 'ok' | 'fail' | 'info'
@@ -109,7 +144,7 @@ export function buildSteps(run: RunSnapshot, events: AgentEvent[]): Step[] {
       last.text = groupText(group, targets, last.count)
       return
     }
-    const step: Step = { ts: ev.timestamp, who, text, state, count: 1, key: group ? `${who}|${group}` : ev.event_id }
+    const step: Step = { ts: ev.timestamp, agent: ev.source ?? '', who, text, state, count: 1, key: group ? `${who}|${group}` : ev.event_id }
     if (group) groups.set(step, target ? [target] : [])
     steps.push(step)
   }
@@ -157,6 +192,7 @@ export function buildSteps(run: RunSnapshot, events: AgentEvent[]): Step[] {
       case 'agent_message': {
         const to = agents.get(ev.target ?? '')
         if (!to || !d.content || !agent || ev.target === ev.source) break  // user prompts already appear as 收到任务
+        if (to.kind === 'subagent' && to.parent === agent.id) break  // the dispatch already appears as 安排…去做
         const raw = typeof d.content === 'string' ? d.content.trim() : ''
         push(ev, raw && !/^[[{]/.test(raw) ? `告诉${agentLabel(to)}：${preview(raw, 80)}` : `把结果交给了${agentLabel(to)}`, 'info')
         break
@@ -186,7 +222,7 @@ export interface Overview {
   turnEnd: number | null
   now: { who: string; what: string; status: Status }[]
   next: string[]
-  done: string[]
+  checklist: { label: string; status: string }[]
   errors: Step[]
   progress: { done: number; total: number }
 }
@@ -202,7 +238,7 @@ export function overview(run: RunSnapshot, events: AgentEvent[], steps: Step[]):
   const turnStart = turn ? turn.started_at ?? turn.created_at : run.started_at
   const label = (t: RunSnapshot['tasks'][number]) => {
     const owner = byId.get(t.agent)
-    return preview(owner?.kind === 'subagent' && owner.current_task ? owner.current_task : t.description, 80) || agentLabel(owner)
+    return preview(t.description || owner?.current_task, 80) || agentLabel(owner)
   }
   const inTurn = run.tasks.filter((t) => t !== turn && t.created_at >= turnStart && t.status !== 'aborted')
   const active = run.agents.filter((a) => ['running', 'planning', 'waiting'].includes(a.status))
@@ -213,19 +249,66 @@ export function overview(run: RunSnapshot, events: AgentEvent[], steps: Step[]):
     : waitingForUser ? ['需要你确认或回复后才能继续']
     : run.status === 'running' ? ['完成当前步骤后，由主助手决定下一步']
     : run.status === 'idle' ? ['这一轮已经做完，等待你的新指令']
-    : run.status === 'failed' ? ['有步骤出错了，请查看下方「出错了」']
+    : run.status === 'failed' ? ['有步骤出错了，请看标红的助手']
     : run.status === 'aborted' ? ['任务已被停止']
     : ['全部完成，没有待办']
-  const done = run.tasks.filter((t) => t.status === 'completed')
-    .sort((a, b) => (b.ended_at ?? 0) - (a.ended_at ?? 0)).map(label)
+  const checklist = [...inTurn].sort((a, b) => a.created_at - b.created_at).map((t) => ({ label: label(t), status: t.status }))
   return {
     title: preview(turn?.description, 200) || run.title || '未命名任务',
     turnStart,
     turnEnd: turn ? turn.ended_at : run.ended_at,
-    now, next, done,
+    now, next, checklist,
     errors: steps.filter((s) => s.state === 'fail' && s.ts >= turnStart),
     progress: { done: inTurn.filter((t) => t.status === 'completed').length, total: inTurn.length },
   }
+}
+
+/**
+ * Radial tree inside a w×h box: a single root sits in the centre, children share the ring around it
+ * (angular space proportional to their own sub-tree size), grandchildren go on the next ring out.
+ * Rings are ellipses so wide stages are used well.
+ */
+export function radialLayout(agents: Pick<Agent, 'id' | 'parent'>[], w: number, h: number): Map<string, { x: number; y: number }> {
+  const ids = new Set(agents.map((a) => a.id))
+  const kids = new Map<string, string[]>()
+  const ROOT = '\u0000root'
+  for (const a of agents) {
+    const p = a.parent && ids.has(a.parent) && a.parent !== a.id ? a.parent : ROOT
+    kids.set(p, [...(kids.get(p) ?? []), a.id])
+  }
+  const leaves = (id: string, seen = new Set<string>()): number => {
+    if (seen.has(id)) return 1
+    seen.add(id)
+    const c = kids.get(id) ?? []
+    return c.length ? c.reduce((s, k) => s + leaves(k, seen), 0) : 1
+  }
+  const depth = (id: string, d = 0, seen = new Set<string>()): number =>
+    seen.has(id) ? d : (seen.add(id), Math.max(d, ...(kids.get(id) ?? []).map((k) => depth(k, d + 1, seen))))
+  const roots = kids.get(ROOT) ?? []
+  const virtual = roots.length !== 1
+  const start = virtual ? ROOT : roots[0] ?? ROOT
+  const maxDepth = Math.max(1, depth(start))
+  const rx = Math.max(0, w / 2 - 75), ry = Math.max(0, h / 2 - 70)
+  const pos = new Map<string, { x: number; y: number }>()
+  // A crowded ring alternates between an inner and outer radius so neighbouring cards don't collide.
+  const place = (id: string, d: number, a0: number, a1: number, seen: Set<string>, stagger = 1) => {
+    if (seen.has(id)) return
+    seen.add(id)
+    const a = (a0 + a1) / 2
+    const r = (d / maxDepth) * stagger
+    if (id !== ROOT) pos.set(id, { x: w / 2 + rx * r * Math.cos(a), y: h / 2 + ry * r * Math.sin(a) })
+    const c = kids.get(id) ?? []
+    const total = c.reduce((s, k) => s + leaves(k), 0) || 1
+    let s = a0
+    c.forEach((k, i) => {
+      const span = ((a1 - a0) * leaves(k)) / total
+      place(k, d + 1, s, s + span, seen, c.length > 6 && i % 2 ? 1 - 0.38 / (d + 1) : 1)
+      s += span
+    })
+  }
+  const n = Math.max(1, leaves(start))
+  place(start, 0, -Math.PI / n, 2 * Math.PI - Math.PI / n, new Set())  // first child lands at 3 o'clock
+  return pos
 }
 
 export function fmtAgo(ms: number): string {

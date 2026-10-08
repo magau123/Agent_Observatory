@@ -27,11 +27,16 @@ Agent Observatory hooks into the native hook systems of AI coding agents, so you
 > Everything shown comes from real events. Nothing is mocked or sampled. If a tool doesn't report token usage, the dashboard shows **N/A** instead of a guess.
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Simple view: what is happening now, what's next, what's done, who is involved" width="100%">
+  <img src="docs/screenshot.png" alt="Live collaboration stage: a Cursor main agent dispatching five subagents, each with a speech bubble saying what it is doing" width="100%">
 </p>
+<p align="center"><sub>A real Cursor session: the main agent (center) dispatched five helpers. Bubbles say what each one is doing right now, and the swimlanes show who works in parallel.</sub></p>
 
 <details>
-<summary>More: how errors look · detailed view for developers</summary>
+<summary>More: 11 agents in parallel · how errors look · detailed view for developers</summary>
+
+**11 agents in parallel**
+
+![Parallel agents](docs/screenshot-parallel.png)
 
 **Errors, in plain words**
 
@@ -45,7 +50,11 @@ Agent Observatory hooks into the native hook systems of AI coding agents, so you
 ## ✨ Features
 
 - **Zero-intrusion integrations**: one installer wires up Cursor, Claude Code and Codex hooks. The hook script uses only the standard library and never blocks or breaks your agent, even if the server is down.
-- **Simple view for everyone (default)**: shows what's happening now, what comes next, what's already done, what went wrong and who is involved, in plain language with no jargon. The UI text is currently Chinese.
+- **Live collaboration stage (default view)**: the main agent sits in the center, with the helpers it dispatched around it.
+  - Each helper is an animated character. A spinning ring means it is working, a speech bubble says what it is doing, and an icon shows the kind of work: 📖 reading, ✏️ editing, ⌨️ running a command, 🌐 browsing.
+  - Glowing particles travel along the links when work is dispatched or results are handed back.
+- **Swimlane timeline**: one lane per agent on a shared time axis, so you see at a glance who worked in parallel, when, and on what.
+- **Plain-language story and checklist**: a chat-style live feed plus this request's checklist, with no jargon, readable by anyone. The UI text is currently Chinese.
 - **Detailed view for developers**: one click away, top right.
 - **Agent graph**: React Flow and dagre lay out agents, subagent spawns, message flow and tool nodes, and highlight active edges live.
 - **Subagent awareness**: child conversations fold into the parent run, and each subagent's tool calls are attributed to that subagent.

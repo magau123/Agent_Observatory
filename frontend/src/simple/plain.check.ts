@@ -1,7 +1,7 @@
 // Self-check for plain.ts: `node src/simple/plain.check.ts` (Node 22.18+ runs TypeScript directly).
 import assert from 'node:assert/strict'
 import type { Agent, AgentEvent, RunSnapshot } from '../types'
-import { actionText, buildSteps, fmtSpan, overview } from './plain.ts'
+import { actionText, buildSteps, fmtSpan, overview, radialLayout } from './plain.ts'
 
 let n = 0
 const ev = (event_type: AgentEvent['event_type'], source: string, data: Record<string, unknown> = {}, status: AgentEvent['status'] = null): AgentEvent =>
@@ -33,6 +33,7 @@ const events = [
   { ...ev('agent_message', 'user', { content: '重构登录' }), target: 'main' },
   ev('task_start', 'main', { description: '重构登录' }),
   ev('agent_start', 's1', { kind: 'subagent' }),
+  { ...ev('agent_message', 'main', { content: 'long prompt for the helper' }), target: 's1' },
   ev('tool_end', 's1', { tool_name: 'Read', input: { file_path: 'a/db.py' } }, 'completed'),
   ev('tool_end', 's1', { tool_name: 'Read', input: { file_path: 'a/models.py' } }, 'completed'),
   ev('tool_end', 's1', { tool_name: 'Read', input: { file_path: 'a/db.py' } }, 'completed'),
@@ -54,7 +55,13 @@ assert.equal(ov.title, '重构登录')  // the latest request, not the session's
 assert.equal(ov.turnStart, 10)
 assert.deepEqual(ov.now.map((x) => `${x.who}|${x.what}`), ['主助手|等待助手完成工作', '探索助手|正在查找 login'])
 assert.deepEqual(ov.next, ['写测试'])
-assert.deepEqual(ov.done, ['读需求'])
+assert.deepEqual(ov.checklist, [{ label: '写测试', status: 'created' }])  // the earlier request (读需求) is not in this turn's list
 assert.equal(ov.errors.length, 1)
 assert.deepEqual(ov.progress, { done: 0, total: 1 })  // only steps of the current request count
+const lay = radialLayout([{ id: 'm', parent: null }, { id: 'a', parent: 'm' }, { id: 'b', parent: 'm' }, { id: 'a1', parent: 'a' }], 800, 600)
+assert.deepEqual(lay.get('m'), { x: 400, y: 300 })  // single root in the centre
+assert.ok(lay.get('a')!.x > 400 && lay.get('b')!.x < 400, 'children spread around the root')
+const dist = (p: { x: number; y: number }) => Math.hypot(p.x - 400, p.y - 300)
+assert.ok(dist(lay.get('a1')!) > dist(lay.get('a')!), 'grandchildren sit on an outer ring')
+assert.equal(radialLayout([{ id: 'x', parent: 'x' }], 400, 300).size, 1)  // self-parent must not loop
 console.log('plain.ts: all checks passed')

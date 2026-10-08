@@ -73,6 +73,8 @@ def test_cursor() -> None:
                     "tool_input": {"file_path": "a.py"}})
     hook("cursor", {**c, "hook_event_name": "postToolUse", "tool_name": "Read", "tool_use_id": "t1",
                     "tool_output": "{}", "duration": 12})
+    hook("cursor", {**c, "hook_event_name": "preToolUse", "tool_name": "Task", "tool_use_id": "s1",
+                    "tool_input": json.dumps({"description": "Scan auth", "prompt": "explore auth", "subagent_type": "explore"})})
     for sid, task in (("s1", "explore auth"), ("s2", "explore db")):  # parallel subagents
         hook("cursor", {**c, "hook_event_name": "subagentStart", "subagent_id": sid, "subagent_type": "explore",
                         "task": task, "parent_conversation_id": "c1", "is_parallel_worker": True})
@@ -100,8 +102,10 @@ def test_cursor() -> None:
     assert a["s2"]["llm_calls"] == 1 and a["s2"]["tool_calls"] == 1, a["s2"]  # folded + deduplicated
     assert a["main"]["status"] == "completed" and run["status"] == "idle"
     assert run["title"] == "refactor auth" and run["cwd"] == "E:/proj/demo"
+    tasks = {t["id"]: t["description"] for t in run["tasks"]}
+    assert tasks["sub:s1"] == "Scan auth" and tasks["sub:s2"] == "explore db", tasks  # short Task title wins
     m = run["metrics"]
-    assert (m["tool_calls"], m["errors"], m["llm_calls"], m["total_tokens"]) == (2, 1, 2, None), m
+    assert (m["tool_calls"], m["errors"], m["llm_calls"], m["total_tokens"]) == (3, 1, 2, None), m
     assert any(r["run_id"] == "cursor:c1" and r["kind"] == "turn" for r in get("/api/reports"))
 
 
