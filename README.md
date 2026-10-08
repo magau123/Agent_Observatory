@@ -1,75 +1,190 @@
-# Agent Observatory
+<div align="center">
 
-本地运行的多 Agent 工作流可视化工具。通过各工具的原生 hooks 采集 **Cursor / Claude Code / Codex** 的会话、子 agent、工具调用、思考与失败，实时展示 agent 关系图、时间线与指标，并在任务结束时和每 30 分钟向你汇报（Dashboard 汇报面板 + Windows 桌面通知）。自研 Python 多 agent 程序可用单文件 SDK 接入。
+# 🔭 Agent Observatory
 
-## 启动
+**Local, real-time observability for multi-agent workflows in Cursor, Claude Code, Codex and your own Python agents.**
 
-```powershell
+English | [简体中文](./README.zh-CN.md)
+
+[![GitHub stars](https://img.shields.io/github/stars/magau123/Agent_Observatory?style=flat&logo=github)](https://github.com/magau123/Agent_Observatory/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/magau123/Agent_Observatory?style=flat&logo=github)](https://github.com/magau123/Agent_Observatory/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/magau123/Agent_Observatory)](https://github.com/magau123/Agent_Observatory/issues)
+[![License: MIT](https://img.shields.io/github/license/magau123/Agent_Observatory)](./LICENSE)
+<br>
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-WebSocket-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+
+[Features](#-features) · [Quick Start](#-quick-start) · [Integrations](#-integrations) · [SDK](#-python-sdk) · [Configuration](#%EF%B8%8F-configuration) · [Roadmap](#-roadmap)
+
+</div>
+
+---
+
+Agent Observatory hooks into the native hook systems of AI coding agents, so you don't change any project code. It captures sessions, subagents, tool calls, thoughts and failures. A live dashboard shows **who is working with whom, what each agent is doing, and what went wrong**. When a run finishes, it reports back to you.
+
+> Everything shown comes from real events. Nothing is mocked or sampled. If a tool doesn't report token usage, the dashboard shows **N/A** instead of a guess.
+
+## ✨ Features
+
+- **Zero-intrusion integrations**: one installer wires up Cursor, Claude Code and Codex hooks. The hook script uses only the standard library and never blocks or breaks your agent, even if the server is down.
+- **Agent graph**: React Flow and dagre lay out agents, subagent spawns, message flow and tool nodes, and highlight active edges live.
+- **Subagent awareness**: child conversations fold into the parent run, and each subagent's tool calls are attributed to that subagent.
+- **Timeline**: every event, with filters by type, agent and errors only, and expandable raw payloads.
+- **Metrics and errors**: active agents, tasks, LLM and tool calls, latency, tokens and a dedicated error panel.
+- **Reports**: a summary (currently in Chinese) when each run ends, delivered as a desktop notification. Periodic digests appear in the web Reports panel.
+- **Persistent and replayable**: events are stored in local SQLite and replayed on restart. WebSocket clients reconnect automatically.
+- **Python SDK**: a single-file, stdlib-only `Tracer` for LangGraph, CrewAI, AutoGen or hand-rolled agents.
+
+## 🚀 Quick Start
+
+**Requirements:** Python 3.12+ and Node.js 18+. Node is only needed to build the dashboard once.
+
+```bash
+git clone https://github.com/magau123/Agent_Observatory.git
+cd Agent_Observatory
+
 python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
-.\.venv\Scripts\python main.py          # 首次会自动 npm 构建前端；打开 http://127.0.0.1:7777
+# Windows: .\.venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+
+python main.py          # builds the frontend on first run, then serves http://127.0.0.1:7777
 ```
 
-前端开发模式：`cd frontend; npm install; npm run dev`（5173 端口，/api 与 /ws 代理到 7777）。
+Then connect your agents:
 
-## 接入 Cursor / Claude Code / Codex
-
-```powershell
-python hooks/install.py                 # 自动检测 ~/.cursor ~/.claude ~/.codex 并写入用户级 hooks
-python hooks/install.py cursor codex    # 只装指定工具
-python hooks/install.py --uninstall     # 移除本工具的条目，保留其他 hooks
+```bash
+python hooks/install.py # auto-detects ~/.cursor, ~/.claude, ~/.codex
 ```
 
-- 幂等；首次修改前会备份为 `.bak`。
-- Codex：安装器会在 `~/.codex/config.toml` 打开 `[features] hooks = true`，需在 Codex 里用 `/hooks` 批准一次。
-- hook 脚本 `hooks/observe_hook.py` 仅用标准库，1.5 秒超时、失败静默、永远 exit 0，服务没开也不影响你的 agent。
-- 一次会话 = 一个 Run；子 agent（Cursor subagent / Claude Task / Codex subagent）作为子节点挂在主 agent 下，其内部的工具调用归属到子 agent。
+Open **http://127.0.0.1:7777** and start an agent session. It appears live.
 
-## 在自己的 Python 多 agent 程序中接入
+<details>
+<summary>Frontend dev mode</summary>
+
+```bash
+cd frontend
+npm install
+npm run dev             # http://localhost:5173, proxies /api and /ws to :7777
+```
+</details>
+
+## 🔌 Integrations
+
+| Tool | How | Status |
+|---|---|---|
+| **Cursor** | `~/.cursor/hooks.json` | ✅ Verified live (3.22) |
+| **Claude Code** | `~/.claude/settings.json` | ✅ Tested against documented payloads |
+| **Codex** | `~/.codex/hooks.json` + `[features] hooks = true` | ✅ Tested against documented payloads |
+| **Custom Python agents** | `observatory/sdk.py` | ✅ 8 end-to-end scenarios |
+| **Anything else** | `POST /api/events` | Schema at `GET /api/schema` |
+
+```bash
+python hooks/install.py cursor codex   # only these tools
+python hooks/install.py --uninstall    # remove our entries, keep everyone else's
+```
+
+- Idempotent. A one-time `.bak` backup is written before a config file is first modified.
+- **Codex:** approve the hooks once via `/hooks` inside Codex.
+- One session becomes one **Run**. Subagents (Cursor subagents, Claude `Task`, Codex subagents) appear as child nodes of the main agent.
+
+## 🐍 Python SDK
 
 ```python
-from observatory.sdk import Tracer   # 单文件、仅标准库，可直接拷贝到其他项目
+from observatory.sdk import Tracer   # single file, stdlib only, copy it anywhere
 
-tr = Tracer(title="分析文档")
+tr = Tracer(title="Analyze document")
 with tr.agent("planner") as planner:
-    with tr.task(planner, "拆分任务"):
+    with tr.task(planner, "split work"):
         with tr.llm(planner, model="gpt-4o", input=prompt) as call:
             call.output, call.input_tokens, call.output_tokens = ...
-        tr.message(planner, "researcher", "查一下 X")
+        tr.message(planner, "researcher", "look up X")
 tr.end()
 ```
 
-也可以直接 `POST /api/events`（单个或数组），字段见 `GET /api/schema`。示例：`python examples/multi_agent_demo.py`（8 个场景：单 agent、串行、并行、agent→tool→agent、agent 失败、工具失败、LLM 失败、并发 run）。
+Events are batched by a background thread. If the server is unreachable, they are dropped and your app keeps running. To see all 8 scenarios, run the demo: single agent, sequential, parallel, agent→tool→agent, agent failure, tool failure, LLM failure and concurrent runs.
 
-## 汇报
-
-- 每轮任务结束：写入 Reports 面板；耗时 ≥ `OBSERVATORY_NOTIFY_MIN_SECONDS`（默认 20）或失败时弹桌面通知。
-- 定时摘要：每 `OBSERVATORY_REPORT_INTERVAL_MIN` 分钟（默认 30），有活动才发，仅显示在 Web 的 Reports 面板。
-- 手动：Reports 面板按钮，或 `python main.py report`（仅 Web / 终端）。
-- 桌面通知只在任务运行结束时弹出，其他汇报都在 Web 中完成。
-
-## 环境变量
-
-| 变量 | 默认 | 说明 |
-|---|---|---|
-| `OBSERVATORY_HOST` / `OBSERVATORY_PORT` | `127.0.0.1` / `7777` | 服务地址 |
-| `OBSERVATORY_URL` | `http://127.0.0.1:7777` | hook 脚本 / SDK 上报地址 |
-| `OBSERVATORY_DB` | `data/observatory.db` | SQLite，重启后回放 |
-| `OBSERVATORY_REPORT_INTERVAL_MIN` | `30` | 定时摘要间隔 |
-| `OBSERVATORY_NOTIFY` | `1` | `0` 关闭桌面通知 |
-| `OBSERVATORY_NOTIFY_MIN_SECONDS` | `20` | 短任务不打扰 |
-
-## 测试
-
-```powershell
-.\.venv\Scripts\python tests\test_observatory.py
+```bash
+python examples/multi_agent_demo.py
 ```
 
-启动真实服务、以子进程运行真实 hook 脚本，覆盖三种工具的 payload、子 agent 关联与合并、Windows 中文编码恢复、8 个 SDK 场景、校验与 WebSocket。
+## 🏗️ Architecture
 
-## 已知限制
+```mermaid
+flowchart LR
+    A[Cursor / Claude Code / Codex hooks] -->|observe_hook.py| B[/POST /api/hooks/]
+    S[Python SDK / any client] --> C[/POST /api/events/]
+    B --> D[Adapters → unified Event schema]
+    C --> D
+    D --> E[RuntimeState reducer]
+    E --> F[(SQLite)]
+    E --> G[WebSocket hub]
+    E --> R[Reporter → desktop notification]
+    G --> H[React dashboard]
+```
 
-- Cursor / Claude Code / Codex 的 hooks 不提供 token 用量，显示为 N/A（SDK 上报时会显示真实值）。
-- Cursor 已在本机实测（3.22）；Claude Code / Codex 按官方文档 payload 测试，本机未安装。
-- Cursor 对部分子 agent 的内部工具调用不触发 hook，这类调用无法被看到。
-- Windows 上 Cursor 会把含中文的 hook 输入按 GBK 误解码，脚本会从 Cursor 的临时 payload 文件恢复原文。
+```text
+observatory/   schema · adapters · state · store · hub · reporter · server · sdk
+hooks/         observe_hook.py (hook entry) · install.py (installer)
+frontend/      React 19 + TypeScript + Vite + React Flow dashboard
+examples/      multi_agent_demo.py
+tests/         integration tests (real server + real hook subprocesses)
+```
+
+## ⚙️ Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `OBSERVATORY_HOST` / `OBSERVATORY_PORT` | `127.0.0.1` / `7777` | Server address |
+| `OBSERVATORY_URL` | `http://127.0.0.1:7777` | Where hooks and the SDK send events |
+| `OBSERVATORY_DB` | `data/observatory.db` | SQLite path, replayed on restart |
+| `OBSERVATORY_REPORT_INTERVAL_MIN` | `30` | Periodic digest interval, web only. Set `0` to disable |
+| `OBSERVATORY_NOTIFY` | `1` | Set `0` to disable desktop notifications |
+| `OBSERVATORY_NOTIFY_MIN_SECONDS` | `20` | Only notify for runs at least this long, or for failures |
+
+Run `python main.py report` to print a digest in the terminal.
+
+## 🧪 Testing
+
+```bash
+python tests/test_observatory.py
+```
+
+The tests start a real server and run the real hook script as a subprocess. They cover:
+
+- Cursor, Claude Code and Codex payloads
+- Subagent linking and folding
+- Windows non-ASCII payload recovery
+- The 8 SDK scenarios
+- Schema validation and WebSocket
+
+## ⚠️ Known Limitations
+
+- The Cursor, Claude Code and Codex hooks don't expose token usage, so tokens show as N/A. The SDK reports real values.
+- Cursor doesn't fire hooks for some tool calls made inside subagents, and those calls can't be observed.
+- On Windows, Cursor decodes non-ASCII hook input as the ANSI code page. The hook script recovers the original text from Cursor's temporary payload file.
+
+## 🗺️ Roadmap
+
+- [ ] Dashboard screenshots and demo GIF
+- [ ] Token and cost extraction from transcript files where available
+- [ ] Export a run as JSON or HTML
+- [ ] More integrations (Gemini CLI, OpenCode, …)
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome. Please use [Conventional Commits](https://www.conventionalcommits.org/) and run the tests before opening a PR.
+
+- 🐛 [Report a bug](https://github.com/magau123/Agent_Observatory/issues/new)
+- 💡 [Request a feature](https://github.com/magau123/Agent_Observatory/issues/new)
+
+## ⭐ Star History
+
+If this project helps you, please give it a star. It really helps.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=magau123/Agent_Observatory&type=Date)](https://star-history.com/#magau123/Agent_Observatory&Date)
+
+## 📄 License
+
+[MIT](./LICENSE) © 2026 magua
