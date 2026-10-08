@@ -26,6 +26,16 @@ Agent Observatory hooks into the native hook systems of AI coding agents, so you
 
 > Everything shown comes from real events. Nothing is mocked or sampled. If a tool doesn't report token usage, the dashboard shows **N/A** instead of a guess.
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Agent Observatory dashboard: agent graph, timeline and run overview" width="100%">
+</p>
+
+<details>
+<summary>More: 11 agents running in parallel</summary>
+
+![Parallel agents](docs/screenshot-parallel.png)
+</details>
+
 ## ✨ Features
 
 - **Zero-intrusion integrations**: one installer wires up Cursor, Claude Code and Codex hooks. The hook script uses only the standard library and never blocks or breaks your agent, even if the server is down.
@@ -167,7 +177,8 @@ The tests start a real server and run the real hook script as a subprocess. They
 
 ## 🗺️ Roadmap
 
-- [ ] Dashboard screenshots and demo GIF
+- [x] Dashboard screenshots
+- [ ] Demo GIF
 - [ ] Token and cost extraction from transcript files where available
 - [ ] Export a run as JSON or HTML
 - [ ] More integrations (Gemini CLI, OpenCode, …)

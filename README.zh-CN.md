@@ -26,6 +26,16 @@ Agent Observatory 通过 AI 编程工具自带的 hooks 采集数据，不需要
 
 > 面板上的所有数据都来自真实事件，没有模拟或随机数据。工具不提供 token 用量时显示 **N/A**，不做估算。
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Agent Observatory 面板：agent 关系图、时间线与运行概览" width="100%">
+</p>
+
+<details>
+<summary>更多：11 个 agent 并行运行</summary>
+
+![并行 agent](docs/screenshot-parallel.png)
+</details>
+
 ## ✨ 功能特性
 
 - **零侵入接入**：一条安装命令即可接入 Cursor、Claude Code 和 Codex 的 hooks。hook 脚本只用标准库，服务没开也不会阻塞或影响你的 agent。
@@ -167,7 +177,8 @@ python tests/test_observatory.py
 
 ## 🗺️ 路线图
 
-- [ ] 面板截图与演示 GIF
+- [x] 面板截图
+- [ ] 演示 GIF
 - [ ] 从对话记录文件中提取 token 与成本（在能拿到的情况下）
 - [ ] 导出 Run 为 JSON 或 HTML
 - [ ] 接入更多工具（Gemini CLI、OpenCode 等）
